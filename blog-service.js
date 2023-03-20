@@ -86,10 +86,10 @@ module.exports.addPost = function (postData){
             postData.published = false;
         } else postData.published = true;
         
-        postData.id = posts.length + 1;
+        postData.id = post.length + 1;
         postData.postDate = ConvertJsonDateString(Date.now());
         postData.category = parseInt(postData.category);
-        posts.push(postData);
+        post.push(postData);
         // reject("postData is undefined!");
         resolve(postData);
     })
@@ -103,8 +103,8 @@ module.exports.getPostsByCategory = (category) => {
     var max_category = categories.length;
     let query_post_category = [];
     var promise = new Promise((resolve, reject) => { 
-        for ( let i = 0; i < posts.length; i++){
-            if (posts[i].category == category) query_post_category.push(posts[i]);
+        for ( let i = 0; i < post.length; i++){
+            if (post[i].category == category) query_post_category.push(post[i]);
         }
         if (category < min_category || category > max_category ) // tell client no result cos category value out of bound
             reject(`No result returned in this query! Hint: Your category value seems out of range! Please choose ${min_category} - ${max_category}!`);
@@ -123,8 +123,8 @@ module.exports.getPostsByMinDate = (minDateStr) => {
     let query_post_date = [];
     var promise = new Promise((resolve, reject) => {
         if (regex.test(minDateStr)){
-            for ( let i = 0; i < posts.length; i++){
-                if (new Date(posts[i].postDate) >= new Date(minDateStr)) query_post_date.push(posts[i]);
+            for ( let i = 0; i < post.length; i++){
+                if (new Date(post[i].postDate) >= new Date(minDateStr)) query_post_date.push(post[i]);
             }
             if (query_post_date.length === 0 )
                 reject(`No result returned in this query with your input date ${minDateStr}!`); // data input format correct but no result 
@@ -136,3 +136,58 @@ module.exports.getPostsByMinDate = (minDateStr) => {
     console.log('query Post by minDate ends');
     return promise;
 }
+
+//queryPosts by id
+    module.exports.getPostById = (id) => {
+        console.log('query by ID starts');
+        var min_ID = 1;
+        var max_ID = post.length;
+        let answer = [];
+        var promise = new Promise((resolve, reject) => {
+            for ( let i = 0; i < post.length; i++){
+                if (post[i].id == id) answer.push(post[i]);  // not ===
+            }
+            if (id < min_ID || id > max_ID) // tell client id out of range
+                reject(`No result returned in this query! Hint: Your id value seems out of range! Please choose ${min_ID} - ${max_ID}!`)
+            if (answer.length === 0 )
+                reject(`No result returned in this query with your input id ${id}`);
+            else resolve(answer[0]);
+        })
+        console.log('query by ID ends');
+        return promise;
+}
+
+//produces posts that are both published and filtered by Category
+module.exports.getPublishedPostsByCategory = (category) => {
+    return new Promise((resolve,reject) => {
+    var publishedPost =[];
+    for(let i=0;i<post.length;i++){
+        if(post[i].published == true && post[i].category ==category)
+        {publishedPost.push(post[i]);}
+    }
+    if(publishedPost.length===0)
+    {
+        let err= "no results return "
+        reject({message:err});
+    }
+    resolve(publishedPost);
+    })
+}
+
+
+//utils
+function ConvertJsonDateString(jsonDate) {
+    var shortDate = null;
+    if (jsonDate) {
+        var regex = /-?\d+/;
+        var matches = regex.exec(jsonDate);
+        var dt = new Date(parseInt(matches[0]));
+        var month = dt.getMonth() + 1;
+        var monthString = month > 9 ? month : '0' + month;
+        var day = dt.getDate();
+        var dayString = day > 9 ? day : '0' + day;
+        var year = dt.getFullYear();
+        shortDate = year + '-' + monthString + '-' + dayString;
+    }
+    return shortDate;
+};
