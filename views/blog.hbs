@@ -9,7 +9,7 @@
                 <p>{{#safeHTML data.post1.body}}{{/safeHTML}}</p>
                 <br /><br />
                 <strong>Category:</strong> {{data.post1.category}}<br />
-                <strong>Last Updated:</strong> {{data.post1.postDate}}
+                <strong>Last Updated:</strong> {{#formatDate data.post1.postDate}}{{/formatDate}}
             </article>
             {{else}}
                 {{data.message}}

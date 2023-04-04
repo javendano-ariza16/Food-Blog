@@ -1,8 +1,10 @@
 <div class="row">
  <div class="col-md-12">
- <h2>Posts</h2>
+ <h2>Posts
+	<a href="/posts/add" class="btn btn-success pull-right">Add Post</a>
+ </h2>
  <hr />
-{{#if post}}
+{{#if posts}}
 	<table class='table table-hover'>
 		<thead>
 			<th class='text-center'>
@@ -20,8 +22,9 @@
 			<th>
 				Published
 			</th>
+			<th></th>
 		</thead>
-		{{#each post}}
+		{{#each posts}}
 			<tr>
 				<td scope='row' class='text-center'>
 					{{id}}
@@ -33,7 +36,7 @@
 					<a href='/posts?category={{category}}'>{{category}}</a>
 				</td>
 				<td>
-					{{postDate}}
+					{{#formatDate postDate}}{{/formatDate}}
 				</td>
 				<td>
 					{{#if published}}
@@ -67,6 +70,9 @@
 							></path>
 						</svg>
 					{{/if}}
+				</td>
+				<td>
+					<a href="posts/delete/{{id}}" class="btn btn-danger">Remove</a>
 				</td>
 			</tr>
 		{{/each}}

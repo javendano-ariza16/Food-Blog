@@ -1,5 +1,5 @@
 /*********************************************************************************
-* WEB322 – Assignment 04
+* WEB322 – Assignment 05
 * I declare that this assignment is my own work in accordance with Seneca Academic Policy. No part
 * of this assignment has been copied manually or electronically from any other source
 * (including 3rd party web sites) or distributed to other students.
@@ -43,6 +43,8 @@ const upload = multer(); // no { storage: storage } since we are not using disk 
 //add static middleware
 app.use(express.static('public'));
 
+app.use(express.urlencoded({extended: true}));
+
 app.engine(
 	'.hbs',
 	exphbs.engine({
@@ -65,6 +67,12 @@ app.engine(
 			safeHTML: function (context) {
 				return stripJs(context);
 			},
+      formatDate: function(dateObj){
+        let year = dateObj.getFullYear();
+        let month = (dateObj.getMonth() + 1).toString();
+        let day = dateObj.getDate().toString();
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2,'0')}`;
+       }
 		},
 	}),
 );
@@ -194,14 +202,24 @@ app.get('/blog/:id', async (req, res) => {
     let category = req.query.category;
     let min_date = req.query.minDate;
     if (category){
-        blog_service.getPostsByCategory(category).then((dataC) => {res.render("posts", {post:dataC});}) // send json data back
+        blog_service.getPostsByCategory(category).then((dataC) =>
+         {
+          console.log(dataC.length);
+          if(dataC.length>0)
+          res.render("posts", {posts:dataC})
+          else{res.render("posts", { message: "No Results" })};
+         }) // send json data back
         .catch((err) => {
         console.log(err);
         res.render("posts", {message: "no results"});
         })
     }
     else if (min_date) {
-        blog_service.getPostsByMinDate(min_date).then((dataD) => {res.render("posts", {post:dataD});}) //send json data back
+        blog_service.getPostsByMinDate(min_date).then((dataD) => {
+          if(dataD.length>0)
+          res.render("posts", {posts:dataD})
+          else{res.render("posts", { message: "No Results" })};
+        }) //send json data back
         .catch((err) => {
             console.log(err);
             res.render("posts", {message: "no results"});
@@ -209,8 +227,9 @@ app.get('/blog/:id', async (req, res) => {
     } else { // 
         blog_service.getAllPosts()
         .then((data) =>{
-            console.log("getAllPosts JSON loaded!");
-            res.render("posts", {post:data});
+          if(data.length>0)
+          res.render("posts", {posts:data})
+          else{res.render("posts", { message: "No Results" })};;
         })
         .catch((err) =>{
             console.log(err);
@@ -231,9 +250,12 @@ app.get("/post/:id", (req, res) =>{
 });
 
 
-    app.get("/categories", (req, res) => {
+app.get("/categories", (req, res) => {
       blog_service.getCategories().then((data) => {
+        if(data.length>0)
         res.render("categories", {categories: data});
+        else
+        res.render("categories",{message:"no results"})
       }).catch((err) => {
         res.render("categories",
         {message: "no results"});
@@ -241,8 +263,13 @@ app.get("/post/:id", (req, res) =>{
   });
 
   app.get("/posts/add", (req, res)=> {
-    res.sendFile(path.join(__dirname, "views/addPost.html"));
+    blog_service.getCategories().
+    then((data)=>{res.render("addPost", {categories:data});;
+    })
+    .catch(()=>{res.render("addPost", {categories: []});})
+
   });
+
 
 
 
@@ -285,15 +312,46 @@ app.get("/post/:id", (req, res) =>{
       p1.published = req.body.published;
   
       if (p1.title) {
-        blogService.addPost(p1);
+        blog_service.addPost(p1);
       }
       res.redirect('/posts');
     }
   } 
-  
   )
 
+  app.get("/categories/add", (req, res)=>{
+    res.render("addCategory");
+  })
+
+  app.post("/categories/add",(req,res)=>{
+    let catObj = {};  
+    catObj.category = req.body.category;
+    console.log(req.body.category);
+    if (req.body.category != "") {
+      blog_service.addCategory(catObj)
+        .then(() => {
+          res.redirect("/categories");
+        })
+        .catch(() => {
+          console.log("Some error occured");
+        });
+    }
+  }
+  )
+
+  app.get("/categories/delete/:id", (req,res)=>{
+    blog_service.deleteCategoryById(req.params.id)
+    .then(()=>{res.redirect("/categories")})
+    .catch(res.status(500));
+  })
   
+  
+  app.get("/posts/delete/:id", (req,res)=>{
+    blog_service.deletePostById(req.params.id)
+    .then(()=>{res.redirect("/posts")})
+    .catch(res.status(500));
+  })
+
   app.use((req, res) => {
     res.status(404).render('404');
   });
