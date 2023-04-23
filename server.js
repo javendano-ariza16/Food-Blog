@@ -20,6 +20,8 @@ var app = express();
 var path = require("path");
 var exphbs = require("express-handlebars")
 const blog_service = require("./blog-service.js");
+const authData = require("./auth-service.js");
+const clientSessions = require("client-sessions");
 
 
 
@@ -84,6 +86,32 @@ app.use(function(req,res,next){
   app.locals.viewingCategory = req.query.category;
   next();
  });
+
+
+
+ app.use(clientSessions({
+  cookieName: "session", // this is the object name that will be added to 'req'
+  secret: "bogWeb322", // this should be a long un-guessable string.
+  duration: 2 * 60 * 1000, // duration of the session in milliseconds (2 minutes)
+  activeDuration: 1000 * 60 // the session will be extended by this many ms each request (1 minute)
+}));
+
+app.use(function(req, res, next) {
+  res.locals.session = req.session;
+  next();
+});
+
+//helper middleware function 
+function ensureLogin (req,res,next)  {
+  if (!(req.session.user)) {
+      res.redirect("/login");
+  }
+  else {
+      next();
+  }
+};
+
+
 
 // setup another route to listen on /about
 app.get("/", (req, res) => {
@@ -198,7 +226,7 @@ app.get('/blog/:id', async (req, res) => {
 
 
 
-  app.get("/posts", (req, res) => {
+  app.get("/posts",ensureLogin, (req, res) => {
     let category = req.query.category;
     let min_date = req.query.minDate;
     if (category){
@@ -239,7 +267,7 @@ app.get('/blog/:id', async (req, res) => {
 });
 
 // add post/value route
-app.get("/post/:id", (req, res) =>{
+app.get("/post/:id",ensureLogin, (req, res) =>{
   let id = req.params.id;
   blog_service.getPostById(id)
   .then((dataI) => {res.json(dataI);})
@@ -250,7 +278,7 @@ app.get("/post/:id", (req, res) =>{
 });
 
 
-app.get("/categories", (req, res) => {
+app.get("/categories", ensureLogin, (req, res) => {
       blog_service.getCategories().then((data) => {
         if(data.length>0)
         res.render("categories", {categories: data});
@@ -262,7 +290,7 @@ app.get("/categories", (req, res) => {
       })
   });
 
-  app.get("/posts/add", (req, res)=> {
+  app.get("/posts/add", ensureLogin, (req, res)=> {
     blog_service.getCategories().
     then((data)=>{res.render("addPost", {categories:data});;
     })
@@ -319,7 +347,7 @@ app.get("/categories", (req, res) => {
   } 
   )
 
-  app.get("/categories/add", (req, res)=>{
+  app.get("/categories/add", ensureLogin, (req, res)=>{
     res.render("addCategory");
   })
 
@@ -339,18 +367,65 @@ app.get("/categories", (req, res) => {
   }
   )
 
-  app.get("/categories/delete/:id", (req,res)=>{
+  app.get("/categories/delete/:id", ensureLogin, (req,res)=>{
     blog_service.deleteCategoryById(req.params.id)
     .then(()=>{res.redirect("/categories")})
     .catch(res.status(500));
   })
   
   
-  app.get("/posts/delete/:id", (req,res)=>{
+  app.get("/posts/delete/:id", ensureLogin, (req,res)=>{
     blog_service.deletePostById(req.params.id)
     .then(()=>{res.redirect("/posts")})
     .catch(res.status(500));
   })
+
+  app.get("/login",(req,res) => {
+    res.render('login');
+  }
+  )
+
+  app.get("/register", (req,res)=>{
+    res.render("register");
+  })
+
+
+  app.post("/register", (req,res)=>{
+    authData.registerUser(req.body)
+    .then(() => {
+      res.render('register', {successMessage: "User created"})
+    })
+    .catch((err)=>{
+      res.render('register', {errorMessage: err, userName: req.body.userName})
+    });
+  })
+
+  app.post("/login", (req,res)=>
+  {
+    req.body.userAgent = req.get('User-Agent');
+
+    authData.checkUser(req.body).then((user) => {
+      req.session.user = {
+      userName: user.userName,
+      email: user.email,
+      loginHistory: user.loginHistory
+      };
+      res.redirect('/posts');
+     }).catch((err) =>{
+      res.render('login', {errorMessage: err, userName: req.body.userName})
+     })
+  }
+  )
+
+  app.get("/logout", function(req, res) {
+    req.session.reset();
+    res.redirect("/");
+  });
+
+  app.get('/userHistory', ensureLogin, (req,res)=>{
+    res.render('userHistory')
+  })
+
 
   app.use((req, res) => {
     res.status(404).render('404');
@@ -358,8 +433,12 @@ app.get("/categories", (req, res) => {
 
 
 // setup http server to listen on HTTP_PORT
-blog_service.initialize().then(()=>{
-    console.log("initialize.then");
-    app.listen(HTTP_PORT, onHttpStart);
-    }).catch(err => {console.log(err);                              
-})
+blog_service.initialize()
+  .then(authData.initialize)
+  .then(function () {
+    app.listen(HTTP_PORT, function () {
+      console.log("app listening on: " + HTTP_PORT)
+    });
+  }).catch(function (err) {
+    console.log("unable to start server: " + err);
+  });
