@@ -1,3 +1,16 @@
+/*********************************************************************************
+* WEB322 – Assignment 06
+* I declare that this assignment is my own work in accordance with Seneca Academic Policy. No part
+* of this assignment has been copied manually or electronically from any other source
+* (including 3rd party web sites) or distributed to other students.
+*
+* Name: Juan David Avendao Student ID: 165095217 Date: 19/03/2023
+*
+* Cyclic Web App URL: https://motionless-jay-pullover.cyclic.app
+*
+* GitHub Repository URL: https://github.com/javendano-ariza16/web322-app
+*
+********************************************************************************/ 
 var mongoose = require("mongoose");
 var Schema = mongoose.Schema;
 const bcrypt = require('bcryptjs');
